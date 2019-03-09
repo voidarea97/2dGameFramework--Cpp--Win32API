@@ -26,25 +26,29 @@ class OBJECT_implement									//OBJECTŒÔÃÂ¿‡
 {
 public:
 
-	OBJECT_implement()
-	{	}
-	VECTOR2 position;
-	SPRITE sprite;
-	COLLIDER collider;
-	RIGIDBODY rigidbody;
+	OBJECT_implement(int _ID):ID(_ID)
+	{	} 
+	VECTOR2 position = { 0,0 };
+	SPRITE sprite = nullptr;
+	COLLIDER collider = nullptr;
+	RIGIDBODY rigidbody = nullptr;
 	//bool exist;
-	string name;
+	string name="";
 	int ID;
 
-	virtual ~OBJECT_implement()
-	{
-		
-	}
+	//virtual ~OBJECT_implement()
+	//{
+	//	
+	//}
+	friend void Game_ObjectInit();
 	friend void Game_ObjectStart();
 	friend void Game_FixedUpdate();
 	friend void Game_Physics();
 	friend void Game_Collision();
 	friend void Game_Update();
+	friend RIGIDBODY_implement;
+	friend SPRITE_implement;
+	friend COLLIDER_implement;
 
 protected:
 	virtual void Start();
@@ -82,9 +86,12 @@ public:
 	{
 
 	}
+	~COLLIDER_implement()
+	{
 
-	void CollisionCall(void(*OnCollision)(void), OBJECT);
-
+	}
+	void CollisionCall(OBJECT);
+	OBJECT parentObject;
 	VECTOR2 offset;
 	int height, width;
 };
@@ -96,9 +103,12 @@ public:
 	{
 		
 	}
+	~RIGIDBODY_implement()
+	{
 
-	void PhysicsCall(void(*OnPhysics)(void));
-
+	}
+	void PhysicsCall();
+	OBJECT parentObject;
 	VECTOR2 velocity;
 	VECTOR2 acceleration;
 };

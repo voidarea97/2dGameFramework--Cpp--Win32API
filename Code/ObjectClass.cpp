@@ -24,12 +24,12 @@ void OBJECT_implement::Destroy()
 {
 }
 
-void COLLIDER_implement::CollisionCall(void(*OnCollision)(void), OBJECT)
+void COLLIDER_implement::CollisionCall(OBJECT another)
 {
-	OnCollision();
+	parentObject->OnCollision(another);
 }
 
-void RIGIDBODY_implement::PhysicsCall(void(*OnPhysics)(void))
+void RIGIDBODY_implement::PhysicsCall()
 {
-	OnPhysics();
+	parentObject->OnPhysics();
 }

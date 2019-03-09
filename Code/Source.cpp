@@ -67,7 +67,7 @@ unordered_map<int, OBJECT> aliveObject;
 unordered_map<int, OBJECT> onStartObject;
 
 unordered_set<int> onPhysicsObject;
-unordered_set<pair<int, int>> onCollisionObject;
+unordered_map<int, int> onCollisionObject;
 unordered_set<int> onPaintingObject;
 
 map<string, HBITMAP> resourceImageMap;	//图片名称和图片对象的map
@@ -84,6 +84,7 @@ BOOL						Game_Init(HWND hwnd);			//在此函数中进行资源的初始化
 VOID						Game_Paint(HWND hwnd);		//在此函数中进行绘图代码的书写
 BOOL						Game_ShutDown(HWND hwnd);	//在此函数中进行资源的清理
 
+void Game_ObjectInit();
 
 void Game_ObjectStart();
 void Game_FixedUpdate();
@@ -141,6 +142,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	g_tNow = GetTickCount();   //获取当前系统时间
 	g_tFixPre = g_tNow;
+
+	Game_ObjectInit();
 
 	while (msg.message != WM_QUIT)		//使用while循环，如果消息不是WM_QUIT消息，就继续循环
 	{
@@ -280,7 +283,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		SelectObject(g_mdc, bmp);//将空位图对象放到mdc中
 
-		g_hBackGround = (HBITMAP)LoadImage(NULL, L"Image\\BackGround.bmp", IMAGE_BITMAP, WINDOW_WIDTH, WINDOW_HEIGHT, LR_LOADFROMFILE);
+		g_hBackGround = (HBITMAP)LoadImage(NULL, L"BackGround.bmp", IMAGE_BITMAP, WINDOW_WIDTH, WINDOW_HEIGHT, LR_LOADFROMFILE);
 
 		//从指定目录加载所有贴图
 		//vector<string> vImageName;
@@ -294,6 +297,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		//	//resourceImageMap.emplace(s,)
 		//}
 
+		
 		vector<IMAGERESOURCE> vImage;
 		ifstream ifs("ImageResourcePara.txt");
 		if (!ifs.is_open())
@@ -322,8 +326,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				IMAGE_BITMAP, i.width, i.height, LR_LOADFROMFILE);
 			resourceImageMap.emplace(i.name, hbt);
 		}
+		
 
 		//限制光标移动区域
+		
 		GetClientRect(hwnd, &g_rect);
 
 		g_rect.left += 1;
@@ -335,6 +341,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		lt.y = g_rect.top;
 		rb.x = g_rect.right;
 		rb.y = g_rect.bottom;
+
 
 		ClientToScreen(hwnd, &lt);
 		ClientToScreen(hwnd, &rb);
@@ -356,11 +363,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		SelectObject(g_bufdc, g_hBackGround);
 		BitBlt(g_mdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_bufdc, 0, 0, SRCCOPY);
 
-		for (int i : onPaintingObject)
+		for (auto i = onPaintingObject.begin();i!=onPaintingObject.end();i++)
 		{
-			if (aliveObject.find(i)==aliveObject.end())
+			if (aliveObject.find(*i)==aliveObject.end())
 				continue;
-			OBJECT obj = aliveObject[i];
+			OBJECT obj = aliveObject[*i];
 			auto sprite = obj->sprite;
 			if (sprite != nullptr)		//绘制贴图
 			{
@@ -378,6 +385,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			
 		}
 
+		BitBlt(g_hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_mdc, 0, 0, SRCCOPY);
 		//g_tFixPre += fixedDeltaTime;
 		return VOID();
 	}
@@ -385,14 +393,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	BOOL Game_ShutDown(HWND hwnd)
 	{
 		DeleteObject(g_hBackGround);
-		for (auto i : resourceImageMap)
+		for (auto i = resourceImageMap.begin();i!=resourceImageMap.end();i++)
 		{
-			DeleteObject(i.second);
+			DeleteObject(i->second);
 		}
 		DeleteDC(g_bufdc);
 		DeleteDC(g_mdc);
 		ReleaseDC(hwnd, g_hdc);
 		return TRUE;
+	}
+
+	void Game_ObjectInit()
+	{
+		//OBJECT o1(new OBJECT_implement(1));
+		onStartObject.emplace(1, new OBJECT_implement(1));
+		
 	}
 
 	void Game_ObjectStart()		//每一帧开始调用，用于上一帧创建的物体的初始化
@@ -410,9 +425,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	void Game_FixedUpdate()		//每隔fixedDeltaTime调用
 	{
-		for (auto i : aliveObject)
+		for (auto i = aliveObject.begin();i!=aliveObject.end();i++)
 		{
-			i.second->FixedUpdate();
+			i->second->FixedUpdate();
 		}
 	}
 
@@ -420,12 +435,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		if (onPhysicsObject.empty())
 			return;
-		for (int i : onPhysicsObject)
+		for (auto i = onPhysicsObject.begin();i!=onPaintingObject.end();i++)
 		{
-			if (aliveObject.find(i) == aliveObject.end())
+			if (aliveObject.find(*i) == aliveObject.end())
 				continue;
-			if (aliveObject[i]->rigidbody != nullptr)
-				aliveObject[i]->rigidbody->PhysicsCall(aliveObject[i]->OnPhysics);
+			if (aliveObject[*i]->rigidbody != nullptr)
+				aliveObject[*i]->rigidbody->PhysicsCall();
 		}
 
 
@@ -436,16 +451,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	void Game_Collision()	//碰撞处理Call
 	{
-		for (auto i : onCollisionObject)
+		for (auto i = onCollisionObject.begin();i!=onCollisionObject.end();i++)
 		{
-			auto p1 = aliveObject.find(i.first);
-			auto p2 = aliveObject.find(i.second);
+			auto p1 = aliveObject.find(i->first);
+			auto p2 = aliveObject.find(i->second);
 			if (p1 == aliveObject.end() || p2 == aliveObject.end())
 				continue;
 			if (p1->second->collider == nullptr || p2->second->collider == nullptr)
 				continue;
-			p1->second->collider->CollisionCall(p1->second->OnCollision, p2->second);
-			p2->second->collider->CollisionCall(p2->second->OnCollision, p1->second);
+			p1->second->collider->CollisionCall(p2->second);
+			p2->second->collider->CollisionCall(p1->second);
 		}
 	}
 

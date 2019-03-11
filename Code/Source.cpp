@@ -55,7 +55,7 @@ public:
 //-----------------全局变量--------------------
 
 HDC			g_hdc = NULL, g_mdc = NULL, g_bufdc = NULL;     //全局设备环境句柄与全局内存DC句柄
-DWORD		g_tFixPre = 0, g_tNow = 0, g_tPre = 0;			//声明l两个函数来记录时间,g_tPre记录上一次绘图的时间，g_tNow记录此次准备绘图的时间
+DWORD		g_tFixPre = 0, g_tNow = 0, g_tPre = 0;			
 RECT		g_rect;											//定义一个RECT结构体，用于储存内部窗口区域的坐标
 HBITMAP		g_hBackGround;
 
@@ -409,6 +409,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		//OBJECT o1(new OBJECT_implement(0));
 		OBJECT o1 = CreateObject(VECTOR2(0, 0), "obj1");
 		o1->AddSprite(VECTOR2(100, 100), 100, 100, "2.bmp");
+
+		OBJECT o2 = CreateObject(VECTOR2(0, 0),"111");
+		o2->AddSprite(VECTOR2(250, 250), 100, 100, "2.bmp");
 		//onStartObject.emplace(0, o1);
 
 		
@@ -421,7 +424,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		for (auto i = onStartObject.begin();i!=onStartObject.end();i++)
 		{
 			i->second->Start();
-			aliveObject.emplace(objectID, i->second);
+			aliveObject.emplace(i->first, i->second);
 			//if (i->second->sprite != nullptr)
 				//onPaintingObject.insert(i->first);
 			i->second = nullptr;
@@ -482,6 +485,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		OBJECT obj = make_shared<OBJECT_implement>(objectID, _Pos, _Name);
 		onStartObject.emplace(objectID, obj);
+		objectID++;
 		return obj;
 	}
 

@@ -6,16 +6,6 @@
 
 using namespace std;
 
-//class POINT
-//{
-//public:
-//	POINT(double xi = 0, double yi = 0)
-//	{
-//		x = xi;
-//		y = yi;
-//	}
-//	double x, y;
-//};
 
 class VECTOR2
 {

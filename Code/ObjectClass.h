@@ -51,7 +51,7 @@ public:
 	friend SPRITE_implement;
 	friend COLLIDER_implement;
 
-	void AddSprite(VECTOR2 _pos, int _width, int _height, string _Name);
+	void AddSprite(VECTOR2 _pos, int _width, int _height, string _Name);	//为物体添加Sprite
 	void AddCollider();
 	void AddRigidBody();
 	void DeleteSprite();

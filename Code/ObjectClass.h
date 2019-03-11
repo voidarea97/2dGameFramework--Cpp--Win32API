@@ -1,32 +1,33 @@
 #pragma once
 #include "BaseClass.h"
-#include <memory> 
-#include <string>
+#include "GameGlobal.h"
+//#include <memory> 
+//#include <string>
 
 using namespace std;
+//
+//#define OBJECT shared_ptr<OBJECT_implement>
+//#define SPRITE shared_ptr<SPRITE_implement>
+//#define COLLIDER shared_ptr<COLLIDER_implement>
+//#define RIGIDBODY shared_ptr<RIGIDBODY_implement>
+//
+//#define wOBJECT weak_ptr<OBJECT_implement>
+//#define wSPRITE weak_ptr<SPRITE_implement>
+//#define wCOLLIDER weak_ptr<COLLIDER_implement>
+//#define wRIGIDBODY weak_ptr<RIGIDBODY_implement>
 
-#define OBJECT shared_ptr<OBJECT_implement>
-#define SPRITE shared_ptr<SPRITE_implement>
-#define COLLIDER shared_ptr<COLLIDER_implement>
-#define RIGIDBODY shared_ptr<RIGIDBODY_implement>
 
-#define wOBJECT weak_ptr<OBJECT_implement>
-#define wSPRITE weak_ptr<SPRITE_implement>
-#define wCOLLIDER weak_ptr<COLLIDER_implement>
-#define wRIGIDBODY weak_ptr<RIGIDBODY_implement>
-
-
-class OBJCT_implement;
-class COLLIDER_implement;
-class RIGIDBODY_implement;
-class SPRITE_implement;
+//class OBJECT_implement;
+//class COLLIDER_implement;
+//class RIGIDBODY_implement;
+//class SPRITE_implement;
 
 
 class OBJECT_implement									//OBJECTŒÔÃÂ¿‡
 {
 public:
 
-	OBJECT_implement(int _ID):ID(_ID)
+	OBJECT_implement(int _ID,VECTOR2 _Pos=VECTOR2(0,0),string _Name="object"):ID(_ID),position(_Pos),name(_Name)
 	{	} 
 	VECTOR2 position = { 0,0 };
 	SPRITE sprite = nullptr;
@@ -35,11 +36,11 @@ public:
 	//bool exist;
 	string name="";
 	int ID;
-
-	//virtual ~OBJECT_implement()
-	//{
-	//	
-	//}
+	
+	virtual ~OBJECT_implement()
+	{
+		
+	}
 	friend void Game_ObjectInit();
 	friend void Game_ObjectStart();
 	friend void Game_FixedUpdate();
@@ -49,6 +50,13 @@ public:
 	friend RIGIDBODY_implement;
 	friend SPRITE_implement;
 	friend COLLIDER_implement;
+
+	void AddSprite(VECTOR2 _pos, int _width, int _height, string _Name);
+	void AddCollider();
+	void AddRigidBody();
+	void DeleteSprite();
+	void DeleteCollider();
+	void DeleteRigidBody();
 
 protected:
 	virtual void Start();
@@ -64,8 +72,8 @@ protected:
 class SPRITE_implement
 {
 public:
-	SPRITE_implement(VECTOR2 iPosition, int iWidth, int iHeight, string iPath)
-		:position(iPosition), width(iWidth), height(iHeight), sourceName(iPath)
+	SPRITE_implement(VECTOR2 iPosition, int iWidth, int iHeight, string _Name)
+		:position(iPosition), width(iWidth), height(iHeight), sourceName(_Name)
 	{
 		
 	}

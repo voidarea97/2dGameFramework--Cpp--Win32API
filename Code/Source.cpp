@@ -4,9 +4,9 @@
 #include <windows.h>
 //#include <string>
 //#include <vector>
-#include <map>
-#include <unordered_map>
-#include <unordered_set>
+//#include <map>
+//#include <unordered_map>
+//#include <unordered_set>
 #include <algorithm>
 #include <tchar.h>//使用swprintf_s函数所需的头文件
 #include <time.h> //使用获取系统时间time()函数需要包含的头文件
@@ -61,7 +61,8 @@ HBITMAP		g_hBackGround;
 
 CONTROLLER controller;
 
-//vector<OBJECT> aliveObject;		//活动的对象
+//活动的对象
+
 unordered_map<int, OBJECT> aliveObject;
 
 unordered_map<int, OBJECT> onStartObject;
@@ -84,16 +85,16 @@ BOOL						Game_Init(HWND hwnd);			//在此函数中进行资源的初始化
 VOID						Game_Paint(HWND hwnd);		//在此函数中进行绘图代码的书写
 BOOL						Game_ShutDown(HWND hwnd);	//在此函数中进行资源的清理
 
-void Game_ObjectInit();
-
-void Game_ObjectStart();
-void Game_FixedUpdate();
-void Game_Physics();
-void Game_Collision();
-void Game_Update();
+//void Game_ObjectInit();
+//
+//void Game_ObjectStart();
+//void Game_FixedUpdate();
+//void Game_Physics();
+//void Game_Collision();
+//void Game_Update();
 //void Game_Paint();
 
-
+//OBJECT CreateObject(VECTOR2 _POS,string _Name);
 
 
 
@@ -361,7 +362,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	VOID Game_Paint(HWND hwnd)
 	{
 		SelectObject(g_bufdc, g_hBackGround);
-		BitBlt(g_mdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_bufdc, 0, 0, SRCCOPY);
+		//BitBlt(g_mdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_bufdc, 0, 0, SRCCOPY);
 
 		for (auto i = onPaintingObject.begin();i!=onPaintingObject.end();i++)
 		{
@@ -373,14 +374,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			{
 
 				SelectObject(g_bufdc, resourceImageMap[obj->sprite->sourceName]);
-				/*BitBlt(g_mdc, obj->position.x + sprite->position.x - sprite->width/2.0f,
+				BitBlt(g_mdc, obj->position.x + sprite->position.x - sprite->width/2.0f,
 					obj->position.y + sprite->position.y - sprite->height / 2.0f,
-					sprite->width, sprite->width, g_bufdc, 0, 0, SRCCOPY);*/
+					sprite->width, sprite->width, g_bufdc, 0, 0, SRCCOPY);
 
-				TransparentBlt(g_mdc, obj->position.x + sprite->position.x - sprite->width / 2.0f,
-					obj->position.y + sprite->position.y - sprite->height / 2.0f,
-					sprite->width, sprite->width,
-					g_bufdc, 0, 0, sprite->width, sprite->width, RGB(255, 255, 255));
+				//TransparentBlt(g_mdc, obj->position.x + sprite->position.x - sprite->width / 2.0f,
+				//	obj->position.y + sprite->position.y - sprite->height / 2.0f,
+				//	sprite->width, sprite->width,
+				//	g_bufdc, 0, 0, sprite->width, sprite->width, RGB(255, 255, 255));
 			}
 			
 		}
@@ -405,8 +406,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	void Game_ObjectInit()
 	{
-		//OBJECT o1(new OBJECT_implement(1));
-		onStartObject.emplace(1, new OBJECT_implement(1));
+		//OBJECT o1(new OBJECT_implement(0));
+		OBJECT o1 = CreateObject(VECTOR2(0, 0), "obj1");
+		o1->AddSprite(VECTOR2(100, 100), 100, 100, "2.bmp");
+		//onStartObject.emplace(0, o1);
+
 		
 	}
 
@@ -418,6 +422,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		{
 			i->second->Start();
 			aliveObject.emplace(objectID, i->second);
+			//if (i->second->sprite != nullptr)
+				//onPaintingObject.insert(i->first);
 			i->second = nullptr;
 		}
 		onStartObject.clear();
@@ -466,9 +472,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	void Game_Update()	//每帧调用
 	{
-		for (auto i : aliveObject)
+		for (auto i = aliveObject.begin();i!=aliveObject.end();i++)
 		{
-			i.second->Update();
+			i->second->Update();
 		}
+	}
+
+	OBJECT CreateObject(VECTOR2 _Pos, string _Name)
+	{
+		OBJECT obj = make_shared<OBJECT_implement>(objectID, _Pos, _Name);
+		onStartObject.emplace(objectID, obj);
+		return obj;
 	}
 

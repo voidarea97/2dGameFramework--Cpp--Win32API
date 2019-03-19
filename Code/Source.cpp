@@ -1,5 +1,6 @@
 //Head File
 #include "ObjectClass.h"
+#include "PlayerController.h"
 
 #include <windows.h>
 //#include <string>
@@ -28,10 +29,10 @@ using namespace std;
 #define WINDOW_TITLE	L"GAME DEMO"		//为窗口标题定义的宏
 #define PI				3.14159265f
 
-class CONVERT
+static class CONVERT
 {
 public:
-	wstring Ansi2WChar(LPCSTR pszSrc, int nLen)
+	static wstring Ansi2WChar(LPCSTR pszSrc, int nLen)
 	{
 		int nSize = MultiByteToWideChar(CP_ACP, 0, (LPCSTR)pszSrc, nLen, 0, 0);
 		if (nSize <= 0) return NULL;
@@ -46,7 +47,7 @@ public:
 		delete pwszDst;
 		return wcharString;
 	}
-	wstring s2ws(const std::string& s)
+	static wstring s2ws(const std::string& s)
 	{
 		return Ansi2WChar(s.c_str(), s.size());
 	}
@@ -63,18 +64,19 @@ CONTROLLER controller;
 
 //活动的对象
 
-unordered_map<int, OBJECT> aliveObject;
+unordered_map<int, GAMEOBJECT> activeObject;
 
-unordered_map<int, OBJECT> onStartObject;
+unordered_map<int, GAMEOBJECT> onStartObject;
 
-unordered_set<int> onPhysicsObject;
+unordered_set<int> onCollisionDetectionObject;
+unordered_set<int> onMovementObject;
 unordered_map<int, int> onCollisionObject;
 unordered_set<int> onPaintingObject;
 
 map<string, HBITMAP> resourceImageMap;	//图片名称和图片对象的map
 
-int fixedDeltaTime = 20;
-int deltaTime = 0;
+int fixedDeltaTime = 10;
+float deltaTime = 0;
 
 int objectID = 0;
 
@@ -102,7 +104,7 @@ BOOL						Game_ShutDown(HWND hwnd);	//在此函数中进行资源的清理
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-	//【1】窗口创建四步曲之一：开始设计一个完整的窗口类
+	//【1】开始设计一个完整的窗口类
 	WNDCLASSEX wndClass = { 0 };							//用WINDCLASSEX定义了一个窗口类
 	wndClass.cbSize = sizeof(WNDCLASSEX);			//设置结构体的字节数大小
 	wndClass.style = CS_HREDRAW | CS_VREDRAW;	//设置窗口的样式
@@ -116,26 +118,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wndClass.lpszMenuName = NULL;						//用一个以空终止的字符串，指定菜单资源的名字。
 	wndClass.lpszClassName = L"GDIcore";		//用一个以空终止的字符串，指定窗口类的名字。
 
-												//【2】窗口创建四步曲之二：注册窗口类
+	//【2】注册窗口类
 	if (!RegisterClassEx(&wndClass))				//设计完窗口后，需要对窗口类进行注册，这样才能创建该类型的窗口
 		return -1;
 
-	//【3】窗口创建四步曲之三：正式创建窗口
-	HWND hwnd = CreateWindow(L"GDIcore", WINDOW_TITLE,		//喜闻乐见的创建窗口函数CreateWindow
+	//【3】正式创建窗口
+	HWND hwnd = CreateWindow(L"GDIcore", WINDOW_TITLE,		//创建窗口函数CreateWindow
 		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_WIDTH,
 		WINDOW_HEIGHT, NULL, NULL, hInstance, NULL);
 
-	//【4】窗口创建四步曲之四：窗口的移动、显示与更新
+	//【4】窗口的移动、显示与更新
 	MoveWindow(hwnd, 250, 80, WINDOW_WIDTH, WINDOW_HEIGHT, true);		//调整窗口显示时的位置，使窗口左上角位于（250,80）处
-	ShowWindow(hwnd, nShowCmd);    //调用ShowWindow函数来显示窗口
-	UpdateWindow(hwnd);						//对窗口进行更新，就像我们买了新房子要装修一样
+	ShowWindow(hwnd, nShowCmd);		//调用ShowWindow函数来显示窗口
+	UpdateWindow(hwnd);				//对窗口进行更新，就像我们买了新房子要装修一样
 
 	if (!Game_Init(hwnd))
 	{
 		MessageBox(hwnd, L"资源初始化失败", L"消息窗口", 0); //使用MessageBox函数，创建一个消息窗口
 		return FALSE;
 	}
-	//PlaySound(L"GameMedia\\梦幻西游原声-战斗1-森林.wav", NULL, SND_FILENAME | SND_ASYNC | SND_LOOP); //循环播放背景音乐 
+	//PlaySound(L"GameMedia\\music.wav", NULL, SND_FILENAME | SND_ASYNC | SND_LOOP); 
 
 	//【5】消息循环过程
 	MSG msg = { 0 };				//定义并初始化msg
@@ -144,7 +146,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	g_tNow = GetTickCount();   //获取当前系统时间
 	g_tFixPre = g_tNow;
 
-	Game_ObjectInit();
+	Game_ObjectInSence();
 
 	while (msg.message != WM_QUIT)		//使用while循环，如果消息不是WM_QUIT消息，就继续循环
 	{
@@ -161,14 +163,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 			Game_ObjectStart();		//对象初始化
 
-			if (g_tNow - g_tFixPre >= fixedDeltaTime)        //当此次循环运行与上次绘图时间相差0.06秒时再进行重绘操作
+			if (g_tNow - g_tFixPre >= fixedDeltaTime)       
 			{
 				//Game_Main(hwnd);
 				Game_FixedUpdate();
 				Game_Physics();		//物体运动，碰撞检测
 				Game_Collision();	//碰撞处理
 
-				g_tFixPre += fixedDeltaTime;
+				g_tFixPre += fixedDeltaTime;	
+				//g_tFixPre记录上次应执行fixupdate的时间而非实际执行时间，以实现某帧执行较慢时，后面快速执行下一帧进行补帧
 			}
 			Game_Update();
 			Game_Paint(hwnd);
@@ -319,11 +322,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			vImage.push_back(iBuffer);			
 		}
 		HBITMAP hbt;
-		CONVERT convert;
+		//CONVERT convert;
 		for (auto i : vImage)
 		{
 			//const wchar_t* wt = convert.s2ws(i.name).c_str();
-			hbt = (HBITMAP)LoadImage(NULL, convert.s2ws("Image//"+i.name).c_str(), 
+			hbt = (HBITMAP)LoadImage(NULL, CONVERT::s2ws("Image//"+i.name).c_str(), 
 				IMAGE_BITMAP, i.width, i.height, LR_LOADFROMFILE);
 			resourceImageMap.emplace(i.name, hbt);
 		}
@@ -353,43 +356,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		g_rect.bottom = rb.y;
 
 		ClipCursor(&g_rect);
-		ShowCursor(0);
+		//ShowCursor(0);
 
 		Game_Paint(hwnd);  //调用一次游戏Main函数
 		return TRUE;
 	}
 
-	VOID Game_Paint(HWND hwnd)
-	{
-		SelectObject(g_bufdc, g_hBackGround);
-		//BitBlt(g_mdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_bufdc, 0, 0, SRCCOPY);
-
-		for (auto i = onPaintingObject.begin();i!=onPaintingObject.end();i++)
-		{
-			if (aliveObject.find(*i)==aliveObject.end())
-				continue;
-			OBJECT obj = aliveObject[*i];
-			auto sprite = obj->sprite;
-			if (sprite != nullptr)		//绘制贴图
-			{
-
-				SelectObject(g_bufdc, resourceImageMap[obj->sprite->sourceName]);
-				BitBlt(g_mdc, obj->position.x + sprite->position.x - sprite->width/2.0f,
-					obj->position.y + sprite->position.y - sprite->height / 2.0f,
-					sprite->width, sprite->width, g_bufdc, 0, 0, SRCCOPY);
-
-				//TransparentBlt(g_mdc, obj->position.x + sprite->position.x - sprite->width / 2.0f,
-				//	obj->position.y + sprite->position.y - sprite->height / 2.0f,
-				//	sprite->width, sprite->width,
-				//	g_bufdc, 0, 0, sprite->width, sprite->width, RGB(255, 255, 255));
-			}
-			
-		}
-
-		BitBlt(g_hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_mdc, 0, 0, SRCCOPY);
-		//g_tFixPre += fixedDeltaTime;
-		return VOID();
-	}
 
 	BOOL Game_ShutDown(HWND hwnd)
 	{
@@ -404,14 +376,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		return TRUE;
 	}
 
-	void Game_ObjectInit()
+	void Game_ObjectInSence()
 	{
 		//OBJECT o1(new OBJECT_implement(0));
-		OBJECT o1 = CreateObject(VECTOR2(0, 0), "obj1");
-		o1->AddSprite(VECTOR2(100, 100), 100, 100, "2.bmp");
+		GAMEOBJECT o1 = CreateObject(VECTOR2(0, 0), "obj1");
+		SPRITE sprite1= make_shared<SPRITE_implement>(VECTOR2(100, 100), 100, 100, "2.bmp");
+		o1->AddComponent(sprite1);
+		RIGIDBODY r1 = make_shared<RIGIDBODY_implement>(VECTOR2(50, 50), VECTOR2(0, 0));
+		o1->AddComponent(r1);
+		//o1->AddSprite(VECTOR2(100, 100), 100, 100, "2.bmp");
+		PLAYERCONTROLLER c1 = make_shared<PLAYERCONTROLLER_implement>(&controller,50,50);
+		o1->AddComponent(c1);
 
-		OBJECT o2 = CreateObject(VECTOR2(0, 0),"111");
-		o2->AddSprite(VECTOR2(250, 250), 100, 100, "2.bmp");
+		GAMEOBJECT o2 = CreateObject(VECTOR2(0, 0),"111");
+		sprite1 = make_shared<SPRITE_implement>(VECTOR2(200, 100), 50, 100, "2.bmp");
+		o2->AddComponent(sprite1);
+		//o2->AddSprite(VECTOR2(250, 250), 100, 100, "2.bmp");
 		//onStartObject.emplace(0, o1);
 
 		
@@ -424,7 +404,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		for (auto i = onStartObject.begin();i!=onStartObject.end();i++)
 		{
 			i->second->Start();
-			aliveObject.emplace(i->first, i->second);
+			activeObject.emplace(i->first, i->second);
 			//if (i->second->sprite != nullptr)
 				//onPaintingObject.insert(i->first);
 			i->second = nullptr;
@@ -434,26 +414,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	void Game_FixedUpdate()		//每隔fixedDeltaTime调用
 	{
-		for (auto i = aliveObject.begin();i!=aliveObject.end();i++)
+		for (auto i = activeObject.begin();i!=activeObject.end();i++)
 		{
 			i->second->FixedUpdate();
 		}
 	}
 
 	void Game_Physics()
-	{
-		if (onPhysicsObject.empty())
-			return;
-		for (auto i = onPhysicsObject.begin();i!=onPaintingObject.end();i++)
+	{		
+		for (auto i = onMovementObject.begin();i!=onMovementObject.end();i++)
 		{
-			if (aliveObject.find(*i) == aliveObject.end())
+			if (activeObject.find(*i) == activeObject.end())
 				continue;
-			if (aliveObject[*i]->rigidbody != nullptr)
-				aliveObject[*i]->rigidbody->PhysicsCall();
+			if (activeObject[*i]->rigidbody != nullptr)
+				activeObject[*i]->rigidbody->Move();
 		}
 
-
 		//碰撞检测		
+		for (auto i = onCollisionDetectionObject.begin(); i != onCollisionDetectionObject.end(); i++)
+		{
+
+		}
 		onCollisionObject.clear();	//清空需要碰撞处理的物体set
 
 	}
@@ -462,9 +443,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		for (auto i = onCollisionObject.begin();i!=onCollisionObject.end();i++)
 		{
-			auto p1 = aliveObject.find(i->first);
-			auto p2 = aliveObject.find(i->second);
-			if (p1 == aliveObject.end() || p2 == aliveObject.end())
+			auto p1 = activeObject.find(i->first);
+			auto p2 = activeObject.find(i->second);
+			if (p1 == activeObject.end() || p2 == activeObject.end())
 				continue;
 			if (p1->second->collider == nullptr || p2->second->collider == nullptr)
 				continue;
@@ -475,15 +456,47 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	void Game_Update()	//每帧调用
 	{
-		for (auto i = aliveObject.begin();i!=aliveObject.end();i++)
+		for (auto i = activeObject.begin();i!=activeObject.end();i++)
 		{
 			i->second->Update();
 		}
 	}
 
-	OBJECT CreateObject(VECTOR2 _Pos, string _Name)
+	VOID Game_Paint(HWND hwnd)
 	{
-		OBJECT obj = make_shared<OBJECT_implement>(objectID, _Pos, _Name);
+		SelectObject(g_bufdc, g_hBackGround);
+		BitBlt(g_mdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_bufdc, 0, 0, SRCCOPY);
+
+		for (auto i = onPaintingObject.begin(); i != onPaintingObject.end(); i++)
+		{
+			if (activeObject.find(*i) == activeObject.end())
+				continue;
+			GAMEOBJECT obj = activeObject[*i];
+			auto sprite = obj->sprite;
+			if (sprite != nullptr)		//绘制贴图
+			{
+
+				SelectObject(g_bufdc, resourceImageMap[obj->sprite->sourceName]);
+				BitBlt(g_mdc, obj->transform->position.x + sprite->position.x - sprite->width / 2.0f,
+					obj->transform->position.y + sprite->position.y - sprite->height / 2.0f,
+					sprite->width, sprite->width, g_bufdc, 0, 0, SRCCOPY);
+
+				//TransparentBlt(g_mdc, obj->position.x + sprite->position.x - sprite->width / 2.0f,
+				//	obj->position.y + sprite->position.y - sprite->height / 2.0f,
+				//	sprite->width, sprite->width,
+				//	g_bufdc, 0, 0, sprite->width, sprite->width, RGB(255, 255, 255));
+			}
+
+		}
+
+		BitBlt(g_hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_mdc, 0, 0, SRCCOPY);
+		//g_tFixPre += fixedDeltaTime;
+		return VOID();
+	}
+
+	GAMEOBJECT CreateObject(VECTOR2 _Pos, string _Name)
+	{
+		GAMEOBJECT obj = make_shared<GAMEOBJECT_implement>(objectID, _Pos, _Name);
 		onStartObject.emplace(objectID, obj);
 		objectID++;
 		return obj;

@@ -3,6 +3,7 @@
 #include <io.h>
 #include <fstream>
 #include <vector>
+//#include <stdlib.h>
 
 using namespace std;
 
@@ -19,10 +20,10 @@ public:
 	float y;
 };
 
-class FILEIO
+static class FILEIO
 {
 public:
-	void GetJustCurrentFile(string path, vector<string>& files,string extension)	//获取指定路径下所有扩展名为extension文件名
+	static void GetJustCurrentFile(string path, vector<string>& files,string extension)	//获取指定路径下所有扩展名为extension文件名
 	{
 		long hFile = 0;
 		struct _finddata_t fileinfo;

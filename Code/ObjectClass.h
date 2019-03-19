@@ -6,6 +6,8 @@
 
 using namespace std;
 //
+
+
 //#define OBJECT shared_ptr<OBJECT_implement>
 //#define SPRITE shared_ptr<SPRITE_implement>
 //#define COLLIDER shared_ptr<COLLIDER_implement>
@@ -23,59 +25,102 @@ using namespace std;
 //class SPRITE_implement;
 
 
-class OBJECT_implement									//OBJECT物体类
+class GAMEOBJECT_implement									//OBJECT物体类
 {
-public:
+public:	
+	GAMEOBJECT_implement(int _id,VECTOR2 _pos=VECTOR2(0,0),string _name="object"):ID(_id),name(_name)
+	{	
+		//components["transform"]= make_shared<TRANSFORM_implement>(_pos);
+		transform =  make_shared<TRANSFORM_implement>(this,_pos);
+		//transform->gameObject = this;
+	} 
+	~GAMEOBJECT_implement()
+	{
 
-	OBJECT_implement(int _ID,VECTOR2 _Pos=VECTOR2(0,0),string _Name="object"):ID(_ID),position(_Pos),name(_Name)
-	{	} 
-	VECTOR2 position = { 0,0 };
+	}
+
+	//特殊组件
+	TRANSFORM transform = nullptr;;
 	SPRITE sprite = nullptr;
 	COLLIDER collider = nullptr;
 	RIGIDBODY rigidbody = nullptr;
+
 	//bool exist;
+
+
 	string name="";
 	int ID;
-	
-	virtual ~OBJECT_implement()
-	{
-		
-	}
-	friend void Game_ObjectInit();
+	//一般组件
+	unordered_map<string, COMPONENT> components;
+
+	friend void Game_ObjectInSence();
 	friend void Game_ObjectStart();
 	friend void Game_FixedUpdate();
 	friend void Game_Physics();
 	friend void Game_Collision();
 	friend void Game_Update();
-	friend RIGIDBODY_implement;
-	friend SPRITE_implement;
-	friend COLLIDER_implement;
 
-	void AddSprite(VECTOR2 _pos, int _width, int _height, string _Name);	//为物体添加Sprite
-	void AddCollider();
-	void AddRigidBody();
-	void DeleteSprite();
-	void DeleteCollider();
-	void DeleteRigidBody();
+	friend COMPONENT_implement;
+
+	bool AddComponent(COMPONENT component);
+	
+
+	//void AddSprite(VECTOR2 _pos, int _width, int _height, string _name);	//为物体添加Sprite
+	//void AddCollider();
+	//void AddRigidBody();
+	//void DeleteSprite();
+	//void DeleteCollider();
+	//void DeleteRigidBody();
 
 protected:
-	virtual void Start();
-	virtual void Update();
-	virtual void FixedUpdate();
+	void Start();
+	void Update();
+	void FixedUpdate();
 
-	virtual void OnPhysics();
-	virtual void OnCollision(OBJECT);
+	//virtual void OnPhysics();
+	virtual void OnCollision(GAMEOBJECT);
 
 	virtual void Destroy();
 };
 
-class SPRITE_implement
+class COMPONENT_implement
 {
 public:
-	SPRITE_implement(VECTOR2 iPosition, int iWidth, int iHeight, string _Name)
-		:position(iPosition), width(iWidth), height(iHeight), sourceName(_Name)
+	//COMPONENT_implement(){}
+	COMPONENT_implement(string _name):name(_name)
+	{}
+	COMPONENT_implement(GAMEOBJECT_implement* _gameObject,string _name)
+		:gameObject(_gameObject),name(_name)
 	{
 		
+	}
+	string name;	//组件名称
+	GAMEOBJECT_implement *gameObject;	//组件挂载的物体对象
+
+	friend GAMEOBJECT_implement;
+protected:
+	virtual void Update() {};
+	virtual void FixedUpdate() {};
+	virtual void Start() {};
+	virtual void OnDestroy() {};
+};
+
+class TRANSFORM_implement : public COMPONENT_implement
+{
+public:
+	TRANSFORM_implement(GAMEOBJECT_implement *_gameObject, VECTOR2 _pos)
+		:COMPONENT_implement(_gameObject,"Transform"),position(_pos){}
+	VECTOR2 position;
+
+};
+
+class SPRITE_implement : public COMPONENT_implement
+{
+public:
+	SPRITE_implement(VECTOR2 _pos, int _width, int _height, string _name)
+		:COMPONENT_implement("Sprite"), position(_pos), width(_width), height(_height), sourceName(_name)
+	{
+
 	}
 	~SPRITE_implement()
 	{
@@ -86,11 +131,12 @@ public:
 	string sourceName;
 };
 
-class COLLIDER_implement
+class COLLIDER_implement : public COMPONENT_implement
 {
 public:
 
-	COLLIDER_implement(VECTOR2 iPosition, int iWidth, int iHeight) :offset(iPosition), width(iWidth), height(iHeight)
+	COLLIDER_implement(VECTOR2 _pos, int _width, int _height)
+		:COMPONENT_implement("Collider"), offset(_pos), width(_width), height(_height)
 	{
 
 	}
@@ -98,16 +144,17 @@ public:
 	{
 
 	}
-	void CollisionCall(OBJECT);
-	OBJECT parentObject;
+	void CollisionCall(GAMEOBJECT);
+	//GAMEOBJECT parentObject;
 	VECTOR2 offset;
 	int height, width;
 };
 
-class RIGIDBODY_implement
+class RIGIDBODY_implement : public COMPONENT_implement
 {
 public:
-	RIGIDBODY_implement(VECTOR2 iV, VECTOR2 iA):velocity(iV),acceleration(iA)
+	RIGIDBODY_implement( VECTOR2 _vol, VECTOR2 _acc)
+		:COMPONENT_implement("Rigidbody"), velocity(_vol),acceleration(_acc)
 	{
 		
 	}
@@ -115,8 +162,8 @@ public:
 	{
 
 	}
-	void PhysicsCall();
-	OBJECT parentObject;
+	void Move();
+	//GAMEOBJECT parentObject;
 	VECTOR2 velocity;
 	VECTOR2 acceleration;
 };

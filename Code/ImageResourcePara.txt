@@ -1,2 +1,1 @@
-BackGround.bmp 800 600
 2.bmp 800 600

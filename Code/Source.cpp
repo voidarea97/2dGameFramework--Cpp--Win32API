@@ -163,7 +163,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 			Game_ObjectStart();		//对象初始化
 
-			if (g_tNow - g_tFixPre >= fixedDeltaTime)       
+			while (g_tNow - g_tFixPre >= fixedDeltaTime)       
 			{
 				//Game_Main(hwnd);
 				Game_FixedUpdate();
@@ -385,7 +385,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		RIGIDBODY r1 = make_shared<RIGIDBODY_implement>(VECTOR2(50, 50), VECTOR2(0, 0));
 		o1->AddComponent(r1);
 		//o1->AddSprite(VECTOR2(100, 100), 100, 100, "2.bmp");
-		PLAYERCONTROLLER c1 = make_shared<PLAYERCONTROLLER_implement>(&controller,50,50);
+		PLAYERCONTROLLER c1 = make_shared<PLAYERCONTROLLER_implement>(&controller,100,100);
 		o1->AddComponent(c1);
 
 		GAMEOBJECT o2 = CreateObject(VECTOR2(0, 0),"111");

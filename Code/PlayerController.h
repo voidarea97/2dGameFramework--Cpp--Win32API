@@ -24,6 +24,17 @@ public:
 	}
 	virtual void FixedUpdate()
 	{
+
+		if (controller->keyUp['a' - 'a'])
+			rigidbody.lock()->velocity.x = 0;
+		if (controller->keyUp['d' - 'a'])
+			rigidbody.lock()->velocity.x = 0;
+		if (controller->keyUp['w' - 'a'])
+			rigidbody.lock()->velocity.y = 0;
+		if (controller->keyUp['s' - 'a'])
+			rigidbody.lock()->velocity.y = 0;
+
+
 		if (controller->keyDown['a' - 'a'])
 			rigidbody.lock()->velocity.x = -speedX;
 		if (controller->keyDown['d' - 'a'])
@@ -33,5 +44,6 @@ public:
 		if (controller->keyDown['s' - 'a'])
 			rigidbody.lock()->velocity.y = speedY;
 
+		
 	}
 };

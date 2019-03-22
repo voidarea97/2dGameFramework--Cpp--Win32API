@@ -56,7 +56,7 @@ public:
 //-----------------全局变量--------------------
 
 HDC			g_hdc = NULL, g_mdc = NULL, g_bufdc = NULL;     //全局设备环境句柄与全局内存DC句柄
-DWORD		g_tFixPre = 0, g_tNow = 0, g_tPre = 0;			
+DWORD		g_tFixPre = 0, g_tNow = 0, g_tPre = 0, g_tFixedNow = 0;
 RECT		g_rect;											//定义一个RECT结构体，用于储存内部窗口区域的坐标
 HBITMAP		g_hBackGround;
 
@@ -143,6 +143,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	MSG msg = { 0 };				//定义并初始化msg
 	//bool bFrist = 1;
 
+	//DWORD tFixedCostTime;		//每个fixed帧花费时间
+	DWORD originFixedDeltaTime = fixedDeltaTime;	//最初设定的fixedDeltaTime
+
+	DWORD tFixedStart;	//fixed帧开始时间
+	DWORD tFixedEnd;	//fixed帧结束时间
+	//int tt = 0;		//测试用临时变量
+
 	g_tNow = GetTickCount();   //获取当前系统时间
 	g_tFixPre = g_tNow;
 
@@ -160,23 +167,46 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			g_tPre = g_tNow;
 			g_tNow = GetTickCount();   //获取当前系统时间
 			deltaTime = g_tNow - g_tPre;
+			
 
 			Game_ObjectStart();		//对象初始化
 
-			while (g_tNow - g_tFixPre >= fixedDeltaTime)       
+			g_tFixedNow = GetTickCount();
+			while (g_tFixedNow - g_tFixPre >= fixedDeltaTime)
 			{
+				tFixedStart = GetTickCount();
+
 				//Game_Main(hwnd);
 				Game_FixedUpdate();
 				Game_Physics();		//物体运动，碰撞检测
 				Game_Collision();	//碰撞处理
-
+				//if (tt < 50)
+				//{
+				//	Sleep(80);
+				//	tt++;
+				//}
+				tFixedEnd = GetTickCount();
+				while (tFixedEnd - tFixedStart > fixedDeltaTime)
+				{
+					fixedDeltaTime += fixedDeltaTime;
+				}
+				while (tFixedEnd - tFixedStart<fixedDeltaTime / 4 && fixedDeltaTime >originFixedDeltaTime)
+				{
+					fixedDeltaTime = fixedDeltaTime / 2;
+				}
 				g_tFixPre += fixedDeltaTime;	
-				//g_tFixPre记录上次应执行fixupdate的时间而非实际执行时间，以实现某帧执行较慢时，后面快速执行下一帧进行补帧
+				//g_tFixPre记录上次应执行fixupdate的时间而非实际执行时间，以实现某帧执行较慢时快速补帧
+				g_tFixedNow = GetTickCount();
 			}
 			Game_Update();
 			Game_Paint(hwnd);
 			//Game_Main(hwnd);
 			Sleep(1);
+			//if (tt == 50)
+			//{
+			//	Sleep(500);
+			//}
+			//tt++;
 
 		}
 		
@@ -355,7 +385,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		g_rect.right = rb.x;
 		g_rect.bottom = rb.y;
 
-		ClipCursor(&g_rect);
+		//ClipCursor(&g_rect);
 		//ShowCursor(0);
 
 		Game_Paint(hwnd);  //调用一次游戏Main函数

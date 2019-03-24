@@ -20,6 +20,17 @@ public:
 	float y;
 };
 
+class RECTANGLE
+{
+public:
+	RECTANGLE(int _x, int _y, int _width, int _height) : x(_x), y(_y), width(_width), height(_height)
+	{
+
+	}
+	int x, y;
+	int height, width;
+};
+
 static class FILEIO
 {
 public:

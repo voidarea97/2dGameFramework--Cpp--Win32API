@@ -5,7 +5,6 @@
 //#include <string>
 
 using namespace std;
-//
 
 
 //#define OBJECT shared_ptr<OBJECT_implement>
@@ -36,7 +35,7 @@ public:
 	} 
 	~GAMEOBJECT_implement()
 	{
-
+		Destroy();
 	}
 
 	//特殊组件
@@ -53,17 +52,19 @@ public:
 	//一般组件
 	unordered_map<string, COMPONENT> components;
 
-	friend void Game_ObjectInSence();
+	//friend void Game_ObjectInSence();
+	friend void Game_ObjectDestroy();
 	friend void Game_ObjectStart();
 	friend void Game_FixedUpdate();
 	friend void Game_Physics();
 	friend void Game_Collision();
 	friend void Game_Update();
+	friend void DestroyAll();
 
 	friend COMPONENT_implement;
 
 	bool AddComponent(COMPONENT component);
-	
+	bool RemoveComponent(string name);
 
 	//void AddSprite(VECTOR2 _pos, int _width, int _height, string _name);	//为物体添加Sprite
 	//void AddCollider();
@@ -77,22 +78,23 @@ protected:
 	void Update();
 	void FixedUpdate();
 
-	//virtual void OnPhysics();
-	virtual void OnCollision(GAMEOBJECT);
+	
+	void OnCollision(GAMEOBJECT);
 
-	virtual void Destroy();
+	void Destroy();
+	void DestroyNow();
 };
 
 class COMPONENT_implement
 {
 public:
 	//COMPONENT_implement(){}
-	COMPONENT_implement(string _name):name(_name)
-	{}
+	COMPONENT_implement(string _name):name(_name){}
+
 	COMPONENT_implement(GAMEOBJECT_implement* _gameObject,string _name)
 		:gameObject(_gameObject),name(_name)
 	{
-		
+
 	}
 	string name;	//组件名称
 	GAMEOBJECT_implement *gameObject;	//组件挂载的物体对象
@@ -103,6 +105,7 @@ protected:
 	virtual void FixedUpdate() {};
 	virtual void Start() {};
 	virtual void OnDestroy() {};
+	void DestroyObject();
 };
 
 class TRANSFORM_implement : public COMPONENT_implement
@@ -124,7 +127,8 @@ public:
 	}
 	~SPRITE_implement()
 	{
-
+		if (gameObject != nullptr)
+			onPaintingObject.erase(gameObject->ID);
 	}
 	VECTOR2 position;
 	int width, height;
@@ -142,12 +146,21 @@ public:
 	}
 	~COLLIDER_implement()
 	{
-
+		if (gameObject != nullptr)
+			onCollisionDetectionObject.erase(gameObject->ID);
 	}
+
+	RECTANGLE rect()
+	{
+		return RECTANGLE(offset.x - width / 2, offset.y - height / 2, width, height);
+	}
+
 	void CollisionCall(GAMEOBJECT);
 	//GAMEOBJECT parentObject;
+
 	VECTOR2 offset;
 	int height, width;
+	bool CollisionDetect(COLLIDER c);
 };
 
 class RIGIDBODY_implement : public COMPONENT_implement
@@ -160,7 +173,8 @@ public:
 	}
 	~RIGIDBODY_implement()
 	{
-
+		if (gameObject != nullptr )
+			onMovementObject.erase(gameObject->ID);
 	}
 	void Move();
 	//GAMEOBJECT parentObject;

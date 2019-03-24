@@ -15,7 +15,7 @@
 #include <sstream>
 #include <iostream>
 #include <stdlib.h>
-
+#include "QuadTree.h"
 
 #pragma	comment(lib,"winmm.lib")			//调用PlaySound函数所需库文件
 #pragma comment(lib,"Msimg32.lib")		//添加使用TransparentBlt函数所需的库文件
@@ -56,7 +56,7 @@ public:
 //-----------------全局变量--------------------
 
 HDC			g_hdc = NULL, g_mdc = NULL, g_bufdc = NULL;     //全局设备环境句柄与全局内存DC句柄
-DWORD		g_tFixPre = 0, g_tNow = 0, g_tPre = 0, g_tFixedNow = 0;
+DWORD		 g_tNow = 0, g_tPre = 0;
 RECT		g_rect;											//定义一个RECT结构体，用于储存内部窗口区域的坐标
 HBITMAP		g_hBackGround;
 
@@ -72,13 +72,15 @@ unordered_set<int> onCollisionDetectionObject;
 unordered_set<int> onMovementObject;
 unordered_map<int, int> onCollisionObject;
 unordered_set<int> onPaintingObject;
+unordered_set<int> onDestroyObject;
 
 map<string, HBITMAP> resourceImageMap;	//图片名称和图片对象的map
 
-int fixedDeltaTime = 10;
+unsigned long fixedDeltaTime = 10;
 float deltaTime = 0;
 
 int objectID = 0;
+Quadtree quadtree(0,RECTANGLE(0,0,WINDOW_WIDTH, WINDOW_HEIGHT));
 
 //-----------------函数声明--------------------
 
@@ -97,6 +99,7 @@ BOOL						Game_ShutDown(HWND hwnd);	//在此函数中进行资源的清理
 //void Game_Paint();
 
 //OBJECT CreateObject(VECTOR2 _POS,string _Name);
+void DestroyAll();
 
 
 
@@ -141,17 +144,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	//【5】消息循环过程
 	MSG msg = { 0 };				//定义并初始化msg
-	//bool bFrist = 1;
+		//bool bFrist = 1;
 
-	//DWORD tFixedCostTime;		//每个fixed帧花费时间
+		//DWORD tFixedCostTime;		//每个fixed帧花费时间
 	DWORD originFixedDeltaTime = fixedDeltaTime;	//最初设定的fixedDeltaTime
 
-	DWORD tFixedStart;	//fixed帧开始时间
-	DWORD tFixedEnd;	//fixed帧结束时间
+	DWORD tFixedStart =0;	//fixed帧开始时间
+	DWORD tFixedEnd =0;	//fixed帧结束时间
 	//int tt = 0;		//测试用临时变量
 
 	g_tNow = GetTickCount();   //获取当前系统时间
-	g_tFixPre = g_tNow;
+	
 
 	Game_ObjectInSence();
 
@@ -167,12 +170,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			g_tPre = g_tNow;
 			g_tNow = GetTickCount();   //获取当前系统时间
 			deltaTime = g_tNow - g_tPre;
-			
+
 
 			Game_ObjectStart();		//对象初始化
 
+
+			if (tFixedEnd != tFixedStart && tFixedEnd - tFixedStart > fixedDeltaTime)
+			{
+				while (tFixedEnd - tFixedStart > fixedDeltaTime)
+					fixedDeltaTime += fixedDeltaTime;
+			}
+			else if (fixedDeltaTime > originFixedDeltaTime && tFixedEnd - tFixedStart < fixedDeltaTime / 4)
+			{
+
+				fixedDeltaTime = fixedDeltaTime / 2;
+			}
+
+			static DWORD g_tFixedNow;		
 			g_tFixedNow = GetTickCount();
-			while (g_tFixedNow - g_tFixPre >= fixedDeltaTime)
+			static DWORD g_tFixedPre = g_tFixedNow;
+
+			while (g_tFixedNow - g_tFixedPre >= fixedDeltaTime)
 			{
 				tFixedStart = GetTickCount();
 
@@ -185,21 +203,34 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				//	Sleep(80);
 				//	tt++;
 				//}
+				//Sleep(5);
 				tFixedEnd = GetTickCount();
-				while (tFixedEnd - tFixedStart > fixedDeltaTime)
+
+				/*if (tFixedEnd!= tFixedStart && tFixedEnd - tFixedStart > fixedDeltaTime)
 				{
+					while (tFixedEnd - tFixedStart > fixedDeltaTime)
 					fixedDeltaTime += fixedDeltaTime;
 				}
-				while (tFixedEnd - tFixedStart<fixedDeltaTime / 4 && fixedDeltaTime >originFixedDeltaTime)
+				else if (fixedDeltaTime > originFixedDeltaTime && tFixedEnd - tFixedStart<fixedDeltaTime / 4)
 				{
+
 					fixedDeltaTime = fixedDeltaTime / 2;
-				}
-				g_tFixPre += fixedDeltaTime;	
+				}*/
+				g_tFixedPre += fixedDeltaTime;
 				//g_tFixPre记录上次应执行fixupdate的时间而非实际执行时间，以实现某帧执行较慢时快速补帧
-				g_tFixedNow = GetTickCount();
+
+				//g_tFixedNow = GetTickCount();
+				if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))   //查看应用程序消息队列，有消息时将队列中的消息派发出去。
+				{
+					TranslateMessage(&msg);		//将虚拟键消息转换为字符消息
+					DispatchMessage(&msg);			//分发一个消息给窗口程序。
+				}
 			}
+			
+
 			Game_Update();
 			Game_Paint(hwnd);
+			Game_ObjectDestroy();
 			//Game_Main(hwnd);
 			Sleep(1);
 			//if (tt == 50)
@@ -209,7 +240,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			//tt++;
 
 		}
-		
+
 	}
 	//【6】窗口类的注销
 	UnregisterClass(L"GDIcore", wndClass.hInstance);  //程序准备结束，注销窗口类
@@ -232,6 +263,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			switch (wParam)
 			{
 			case VK_ESCAPE:           //按下【Esc】键
+
+				DestroyAll();
 				DestroyWindow(hwnd);    // 销毁窗口, 并发送一条WM_DESTROY消息
 				PostQuitMessage(0);  //结束程序
 				break;
@@ -406,25 +439,67 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		return TRUE;
 	}
 
-	void Game_ObjectInSence()
+	void DestroyAll()
+	{
+		for (auto &i : activeObject)
+		{
+			i.second->Destroy();
+		}
+		activeObject.clear();
+		onCollisionDetectionObject.clear();
+		onCollisionObject.clear();
+		onPaintingObject.clear();
+	}
+
+	void Game_ObjectInSence()	//初始场景
 	{
 		//OBJECT o1(new OBJECT_implement(0));
 		GAMEOBJECT o1 = CreateObject(VECTOR2(0, 0), "obj1");
-		SPRITE sprite1= make_shared<SPRITE_implement>(VECTOR2(100, 100), 100, 100, "2.bmp");
+		SPRITE sprite1 = make_shared<SPRITE_implement>(VECTOR2(0, 0), 100, 100, "2.bmp");
 		o1->AddComponent(sprite1);
-		RIGIDBODY r1 = make_shared<RIGIDBODY_implement>(VECTOR2(50, 50), VECTOR2(0, 0));
+		RIGIDBODY r1 = make_shared<RIGIDBODY_implement>(VECTOR2(0, 50), VECTOR2(0, 0));
 		o1->AddComponent(r1);
+
 		//o1->AddSprite(VECTOR2(100, 100), 100, 100, "2.bmp");
-		PLAYERCONTROLLER c1 = make_shared<PLAYERCONTROLLER_implement>(&controller,100,100);
+		PLAYERCONTROLLER c1 = make_shared<PLAYERCONTROLLER_implement>(&controller, 100, 100);
 		o1->AddComponent(c1);
 
-		GAMEOBJECT o2 = CreateObject(VECTOR2(0, 0),"111");
-		sprite1 = make_shared<SPRITE_implement>(VECTOR2(200, 100), 50, 100, "2.bmp");
-		o2->AddComponent(sprite1);
+		COLLIDER cl1 = make_shared<COLLIDER_implement>(VECTOR2(0, 0), 100, 100);
+		o1->AddComponent(cl1);
+
+		//for (int i = 0; i < 2000; i++)
+		//{
+		//	GAMEOBJECT o1 = CreateObject(VECTOR2(0, 0), "obj1");
+		//	SPRITE sprite1 = make_shared<SPRITE_implement>(VECTOR2(50, 50), 100, 100, "2.bmp");
+		//	o1->AddComponent(sprite1);
+		//	RIGIDBODY r1 = make_shared<RIGIDBODY_implement>(VECTOR2(0, 50), VECTOR2(0, 0));
+		//	o1->AddComponent(r1);
+		//}
+
+		GAMEOBJECT o2 = CreateObject(VECTOR2(0, 200),"111");
+		SPRITE sprite2 = make_shared<SPRITE_implement>(VECTOR2(0, 0), 50, 50, "2.bmp");
+		o2->AddComponent(sprite2);
+
+		cl1 = make_shared<COLLIDER_implement>(VECTOR2(0, 0), 50, 50);
+		o2->AddComponent(cl1);
+
 		//o2->AddSprite(VECTOR2(250, 250), 100, 100, "2.bmp");
 		//onStartObject.emplace(0, o1);
 
 		
+	}
+
+	void Game_ObjectDestroy()
+	{
+		for (auto i : onDestroyObject)
+		{
+			auto a = activeObject.find(i);
+			if (a != activeObject.end())
+			{
+				a->second->DestroyNow();
+			}
+		}
+		onDestroyObject.clear();
 	}
 
 	void Game_ObjectStart()		//每一帧开始调用，用于上一帧创建的物体的初始化
@@ -461,15 +536,35 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 
 		//碰撞检测		
-		for (auto i = onCollisionDetectionObject.begin(); i != onCollisionDetectionObject.end(); i++)
-		{
+		quadtree.Clear();
 
+		for (auto i = onCollisionDetectionObject.begin(); i != onCollisionDetectionObject.end();i++ )
+		{
+			quadtree.insert(*i, activeObject[*i]->collider->rect());			
 		}
-		onCollisionObject.clear();	//清空需要碰撞处理的物体set
+		vector<int> collision;
+		unordered_set<int> dealingObject(onCollisionDetectionObject);
+		for (auto i = dealingObject.begin(); i != dealingObject.end(); )
+		{
+			collision.clear();
+			quadtree.Retrieve(collision, activeObject[*i]->collider->rect());
+			int t = *i;
+			i= dealingObject.erase(i);
+			for (int j : collision)
+			{
+				if (dealingObject.count(j))
+				{
+					//if(CollisionDetection(activeObject[t]->collider->rect(),activeObject[j]->collider->rect()))
+					if(activeObject[t]->collider->CollisionDetect(activeObject[j]->collider))
+						onCollisionObject.emplace(t, j);	//添加到待处理碰撞物体
+				}
+			}
+		}
+		
 
 	}
 
-	void Game_Collision()	//碰撞处理Call
+	void Game_Collision()	//碰撞处理
 	{
 		for (auto i = onCollisionObject.begin();i!=onCollisionObject.end();i++)
 		{
@@ -479,9 +574,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				continue;
 			if (p1->second->collider == nullptr || p2->second->collider == nullptr)
 				continue;
+
+			p1->second->OnCollision(p2->second);
+			p2->second->OnCollision(p1->second);
+
 			p1->second->collider->CollisionCall(p2->second);
 			p2->second->collider->CollisionCall(p1->second);
 		}
+
+		onCollisionObject.clear();	//清空需要碰撞处理的物体
 	}
 
 	void Game_Update()	//每帧调用
@@ -520,7 +621,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 
 		BitBlt(g_hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, g_mdc, 0, 0, SRCCOPY);
-		//g_tFixPre += fixedDeltaTime;
+		//g_tFixedPre += fixedDeltaTime;
 		return VOID();
 	}
 

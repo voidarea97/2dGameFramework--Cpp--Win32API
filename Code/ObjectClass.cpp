@@ -62,6 +62,27 @@ bool GAMEOBJECT_implement::AddComponent(COMPONENT component)
 		return false;
 }
 
+bool GAMEOBJECT_implement::RemoveComponent(string name)
+{
+	if (name == "Sprite")
+		sprite = nullptr;
+	else if (name == "Rigidbody")
+		rigidbody = nullptr;
+	else if (name == "Collider")
+		collider = nullptr;
+	else
+	{
+		auto i = components.find(name);
+		if (i != components.end())
+		{
+			components.erase(i);
+		}
+		else
+			return false;
+	}
+	return true;
+}
+
 void GAMEOBJECT_implement::Start()
 {
 	for (auto i = components.begin(); i != components.end(); i++)
@@ -93,11 +114,46 @@ void GAMEOBJECT_implement::OnCollision(GAMEOBJECT obj)
 
 void GAMEOBJECT_implement::Destroy()
 {
+	onDestroyObject.insert(ID);
+}
+
+void GAMEOBJECT_implement::DestroyNow()
+{
+	sprite = nullptr;
+	rigidbody = nullptr;
+	collider = nullptr;
+	components.clear();
 }
 
 void COLLIDER_implement::CollisionCall(GAMEOBJECT another)
 {
-	//parentObject->OnCollision(another);
+	RIGIDBODY rigidbodySelf = gameObject->rigidbody;
+	RIGIDBODY rigidbodyOther = another->rigidbody;
+
+	//²âÊÔÓÃ´úÂë
+	if (rigidbodySelf != nullptr)
+	{
+		rigidbodySelf->velocity.x = -rigidbodySelf->velocity.x;
+		rigidbodySelf->velocity.y = -rigidbodySelf->velocity.y;
+	}
+	if (rigidbodyOther != nullptr)
+	{
+		/*rigidbodyOther->velocity.x = -rigidbodyOther->velocity.x;
+		rigidbodyOther->velocity.y = -rigidbodyOther->velocity.y;*/
+	}
+}
+
+bool COLLIDER_implement::CollisionDetect(COLLIDER c)
+{
+	int posX = gameObject->transform->position.x;
+	int posY = gameObject->transform->position.y;
+	int poscX = c->gameObject->transform->position.x;
+	int poscY = c->gameObject->transform->position.y;
+
+	if (abs(offset.x + posX - ((c->offset).x + poscX)) < (width / 2 + c->width / 2)
+		&& abs(offset.y + posY - ((c->offset).y + poscY)) < (height / 2 + c->height / 2))
+		return 1;
+	return 0;
 }
 
 void RIGIDBODY_implement::Move()
@@ -110,3 +166,7 @@ void RIGIDBODY_implement::Move()
 	velocity.y += acceleration.y * static_cast<float>(fixedDeltaTime) / 1000;
 }
 
+void COMPONENT_implement::DestroyObject()
+{
+	gameObject->Destroy();
+}

@@ -50,6 +50,7 @@ class COMPONENT_implement;
 
 void Game_ObjectInSence();
 
+void Game_ObjectDestroy();
 void Game_ObjectStart();
 void Game_FixedUpdate();
 void Game_Physics();
@@ -66,8 +67,10 @@ extern unordered_set<int> onCollisionDetectionObject;;
 extern unordered_set<int> onMovementObject;
 extern unordered_map<int, int> onCollisionObject;
 extern unordered_set<int> onPaintingObject;
+extern unordered_set<int> onDestroyObject;
 
-extern int fixedDeltaTime;
+
+extern unsigned long fixedDeltaTime;
 extern float deltaTime;
 
 
